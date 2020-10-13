@@ -13,7 +13,7 @@ func main() {
 	led := rpio.Pin(2)
 	led.Output()
 	if err != nil {
-		log.Panic("Error!")
+		log.Panic("Errorcillo!")
 	}
 	led.Low()
 	for {
