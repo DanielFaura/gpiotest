@@ -45,8 +45,8 @@ func main() {
 	defer in.Close()
 	defer out.Close()
 
-	noteOff := []byte{0b10000001, 60, 127}
-	noteOn := []byte{0b10010001, 60, 127}
+	noteOff := []byte{0b10000001, 0, 127}
+	noteOn := []byte{0b10010001, 0, 127}
 
 	allSoundOff := []byte{0b10110001, 120, 0}
 
@@ -61,6 +61,7 @@ func main() {
 			fmt.Println("RECIBIDO", m)
 			if m[0] == 0b10010000 && m[2] > 0 {
 				noteOn[1] = m[1]
+				noteOn[2] = m[2]
 				fmt.Println("GUAPO", noteOn)
 				out.Write(noteOn)
 			}
