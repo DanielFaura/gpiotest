@@ -5,8 +5,7 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/gomidi/midi"
-	"gitlab.com/gomidi/midi/reader"
+	"github.com/stianeikeland/go-rpio"
 	driver "gitlab.com/gomidi/rtmididrv"
 	// driver "gitlab.com/gomidi/portmididrv"
 )
@@ -33,7 +32,7 @@ func main() {
 		fmt.Println("IN", v)
 	}
 
-	for _, v := range outs {
+	for _, v := range ins {
 		fmt.Println("OUT", v)
 	}
 
@@ -45,36 +44,40 @@ func main() {
 	defer in.Close()
 	defer out.Close()
 
-	noteOff := []byte{0b10000001, 0, 127}
 	noteOn := []byte{0b10010001, 0, 127}
-
+	noteOff := []byte{0b10000001, 0, 127}
 	allSoundOff := []byte{0b10110001, 120, 0}
 
 	out.Write(allSoundOff)
 	time.Sleep(1 * time.Second)
 
-	rd := reader.New(
-		reader.NoLogger(),
-		reader.Each(func(pos *reader.Position, msg midi.Message) {
-			fmt.Printf("got %s\n", msg)
-			m := msg.Raw()
-			fmt.Println("RECIBIDO", m)
-			if m[0] == 0b10010000 && m[2] > 0 {
-				noteOn[1] = m[1]
-				noteOn[2] = m[2]
-				fmt.Println("GUAPO", noteOn)
-				out.Write(noteOn)
-			}
-			if m[0] == 0b10010000 && m[2] == 0 {
-				noteOff[1] = m[1]
-				fmt.Println("FEO", noteOff)
-				out.Write(noteOff)
-			}
-		}),
-	)
-
-	err = rd.ListenTo(in)
+	err = rpio.Open()
 	check(err)
+
+	var pines []rpio.Pin
+
+	for i := 1; i <= 22; i++ {
+		pines[i] = rpio.Pin(i)
+		pines[i].Input()
+		pines[i].PullDown()
+
+		anterior := 0
+
+		for {
+			if pines[i].Read() == 0 && anterior == 0 {
+				noteOn[1] = 60
+				out.Write(noteOn)
+				time.Sleep(2000 * time.Microsecond)
+				anterior = 1
+			}
+			if pines[i].Read() == 1 {
+				noteOff[1] = 60
+				out.Write(noteOff)
+				time.Sleep(2000 * time.Microsecond)
+				anterior = 0
+			}
+		}
+	}
 
 	time.Sleep(1 * time.Hour)
 
