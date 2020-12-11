@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/stianeikeland/go-rpio"
@@ -36,7 +35,7 @@ func main() {
 		fmt.Println("OUT", v)
 	}
 
-	in, out := ins[0], outs[0]
+	in, out := ins[1], outs[1]
 
 	check(in.Open())
 	check(out.Open())
@@ -54,32 +53,29 @@ func main() {
 	err = rpio.Open()
 	check(err)
 
-	var pines []rpio.Pin
+	pines := make([]rpio.Pin, 25)
 
-	for i := 1; i <= 22; i++ {
-		pines[i] = rpio.Pin(i)
+	for i := range pines {
+		pines[i] = rpio.Pin(i + 1)
 		pines[i].Input()
 		pines[i].PullDown()
-
-		anterior := 0
-
-		for {
-			if pines[i].Read() == 0 && anterior == 0 {
-				noteOn[1] = 60
+	}
+	anterior := make([]rpio.State, 25)
+	for {
+		for i := range pines {
+			if pines[i].Read() == rpio.Low && anterior[i] == rpio.High {
+				noteOn[1] = 60 + byte(i)
 				out.Write(noteOn)
 				time.Sleep(2000 * time.Microsecond)
-				anterior = 1
+				anterior[i] = rpio.Low
 			}
-			if pines[i].Read() == 1 {
-				noteOff[1] = 60
+			if pines[i].Read() == rpio.High && anterior[i] == rpio.Low {
+				noteOff[1] = 60 + byte(i)
 				out.Write(noteOff)
 				time.Sleep(2000 * time.Microsecond)
-				anterior = 0
+				anterior[i] = rpio.High
 			}
 		}
 	}
 
-	time.Sleep(1 * time.Hour)
-
-	os.Exit(0)
 }

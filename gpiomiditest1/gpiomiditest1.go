@@ -44,8 +44,8 @@ func main() {
 	defer in.Close()
 	defer out.Close()
 
-	noteOn := []byte{0b10010001, 0, 127}
-	noteOff := []byte{0b10000001, 0, 127}
+	// noteOn := []byte{0b10010001, 0, 127}
+	// noteOff := []byte{0b10000001, 0, 127}
 	allSoundOff := []byte{0b10110001, 120, 0}
 
 	out.Write(allSoundOff)
@@ -54,26 +54,37 @@ func main() {
 	err = rpio.Open()
 	check(err)
 
-	placa := rpio.Pin(26)
-	placa.Input()
-	placa.PullDown()
+	pines := make([]rpio.Pin, 22)
+	// pines[0] = rpio.Pin(1)
+	// pines[0].Input()
+	// pines[0].PullDown()
+	for i := range pines {
+		pines[i] = rpio.Pin(i + 1)
+		pines[i].Input()
+		pines[i].PullDown()
+	}
 
-	anterior := 0
+	// anterior := 0
 
 	for {
-		if placa.Read() == 0 && anterior == 0 {
-			noteOn[1] = 60
-			out.Write(noteOn)
-			time.Sleep(2000 * time.Microsecond)
-			anterior = 1
-		}
-		if placa.Read() == 1 {
-			noteOff[1] = 60
-			out.Write(noteOff)
-			time.Sleep(2000 * time.Microsecond)
-			anterior = 0
-		}
+		fmt.Println("Leyendo pin, el valor es", pines[0].Read())
+		time.Sleep(1 * time.Second)
 	}
+
+	// for {
+	// 	if placa.Read() == 0 && anterior == 0 {
+	// 		noteOn[1] = 60
+	// 		out.Write(noteOn)
+	// 		time.Sleep(2000 * time.Microsecond)
+	// 		anterior = 1
+	// 	}
+	// 	if placa.Read() == 1 {
+	// 		noteOff[1] = 60
+	// 		out.Write(noteOff)
+	// 		time.Sleep(2000 * time.Microsecond)
+	// 		anterior = 0
+	// 	}
+	// }
 
 	time.Sleep(1 * time.Hour)
 
