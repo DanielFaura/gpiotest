@@ -24,6 +24,7 @@ var (
 		{0, 2, 3, 6, 7, 8, 11}, // Escala árabe turbia
 		{0, 2, 3, 5, 7, 9, 10}, // Dórica
 	}
+	volumen byte = 127
 )
 
 func check(e error) {
@@ -89,7 +90,10 @@ func lector(pos *reader.Position, msg midi.Message) {
 		// Cambio de modo
 		modo = int(m[1]) - 60
 	}
-
+	if m[0] == 0b10110000 {
+		// Cambio de volumen
+		volumen = m[2]
+	}
 }
 
 func main() {
@@ -151,7 +155,7 @@ func main() {
 			if pines[i].Read() == rpio.Low && anterior[i] == rpio.High {
 				// noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + transporte + cambioOctavas
 				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas
-				noteOn[2] = 127
+				noteOn[2] = volumen
 				fmt.Println("Cuerda:", i, ", grado:", grado(byte(i)), ", nota:", noteOn[1], ", transporte:", transporte, ", octava:", cambioOctavas)
 				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
