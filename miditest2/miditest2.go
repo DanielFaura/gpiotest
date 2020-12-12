@@ -37,7 +37,7 @@ func main() {
 		fmt.Println("OUT", v)
 	}
 
-	in, out := ins[0], outs[0]
+	in, out := ins[2], outs[0]
 
 	check(in.Open())
 	check(out.Open())

@@ -36,13 +36,13 @@ func nota(grado byte) (nota byte) {
 	case 1:
 		nota = 2
 	case 2:
-		nota = 3
+		nota = 4
 	case 3:
-		nota = 6
+		nota = 5
 	case 4:
 		nota = 7
 	case 5:
-		nota = 8
+		nota = 9
 	case 6:
 		nota = 11
 	}
