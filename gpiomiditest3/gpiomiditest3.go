@@ -18,7 +18,14 @@ func check(e error) {
 func grado(cuerda byte) (grado byte) {
 	// c = número de cuerda
 	// g = grado de la escala
-	grado = (cuerda - 4) % 7
+	grado = cuerda % 7
+	return
+}
+
+func octava(cuerda byte) (octava byte) {
+	// c = número de cuerda
+	// g = grado de la escala
+	octava = cuerda / 7
 	return
 }
 
@@ -29,15 +36,15 @@ func nota(grado byte) (nota byte) {
 	case 1:
 		nota = 2
 	case 2:
-		nota = 4
+		nota = 3
 	case 3:
-		nota = 5
+		nota = 6
 	case 4:
 		nota = 7
 	case 5:
-		nota = 9
+		nota = 8
 	case 6:
-		nota = 12
+		nota = 11
 	}
 	return
 }
@@ -70,8 +77,8 @@ func main() {
 	defer in.Close()
 	defer out.Close()
 
-	noteOn := []byte{0b10010001, 0, 127}
-	noteOff := []byte{0b10000001, 0, 127}
+	noteOn := []byte{0b10010001, 0, 0}
+	// noteOff := []byte{0b10000001, 0, 127}
 	allSoundOff := []byte{0b10110001, 120, 0}
 
 	out.Write(allSoundOff)
@@ -80,31 +87,36 @@ func main() {
 	err = rpio.Open()
 	check(err)
 
-	pines := make([]rpio.Pin, 25)
+	pines := make([]rpio.Pin, 22)
 
 	for i := range pines {
-		pines[i] = rpio.Pin(i + 1)
+		pines[i] = rpio.Pin(i + 4)
 		pines[i].Input()
 		pines[i].PullDown()
 	}
-	anterior := make([]rpio.State, 25)
+	anterior := make([]rpio.State, 22)
 	for {
 		for i := range pines {
 			if pines[i].Read() == rpio.Low && anterior[i] == rpio.High {
-				fmt.Println("XD SUENA")
-				noteOn[1] = nota(grado(byte(i))) + 60
+				noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + 60
+				noteOn[2] = 127
+				fmt.Println("Cuerda:", i, ", grado:", grado(byte(i)), ", nota:", noteOn[1])
 				out.Write(noteOn)
-				time.Sleep(2000 * time.Microsecond)
+				time.Sleep(10000 * time.Microsecond)
 				anterior[i] = rpio.Low
 			}
 			if pines[i].Read() == rpio.High && anterior[i] == rpio.Low {
-				fmt.Println("XD NO SUENA")
-				noteOff[1] = nota(grado(byte(i))) + 60
-				out.Write(noteOff)
-				time.Sleep(2000 * time.Second)
+				noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + 60
+				noteOn[2] = 0
+				out.Write(noteOn)
+				time.Sleep(10000 * time.Microsecond)
+				out.Write(noteOn)
+				time.Sleep(10000 * time.Microsecond)
 				anterior[i] = rpio.High
 			}
 		}
 	}
 
 }
+
+//nota(grado(byte(i))) + 60
