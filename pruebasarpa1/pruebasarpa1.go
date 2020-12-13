@@ -24,7 +24,8 @@ var (
 		{0, 2, 3, 6, 7, 8, 11}, // Escala árabe turbia
 		{0, 2, 3, 5, 7, 9, 10}, // Dórica
 	}
-	volumen byte = 127
+	volumen    byte = 127
+	alteracion int  = 0
 )
 
 func check(e error) {
@@ -90,6 +91,22 @@ func lector(pos *reader.Position, msg midi.Message) {
 		// Cambio de modo
 		modo = int(m[1]) - 60
 	}
+	if m[0] == 0b10010000 && m[1] == 76 && m[2] > 0 {
+		// se altera descendentemente
+		alteracion = -1
+	}
+	if m[0] == 0b10010000 && m[1] == 76 && m[2] == 0 {
+		// se altera descendentemente (PARADA)
+		alteracion = 0
+	}
+	if m[0] == 0b10010000 && m[1] == 77 && m[2] > 0 {
+		// se altera ascendentemente
+		alteracion = 1
+	}
+	if m[0] == 0b10010000 && m[1] == 77 && m[2] == 0 {
+		// se altera ascendentemente (PARADA)
+		alteracion = 0
+	}
 	if m[0] == 0b10110000 {
 		// Cambio de volumen
 		volumen = m[2]
@@ -116,7 +133,7 @@ func main() {
 		fmt.Println("OUT", v)
 	}
 
-	in, out := ins[2], outs[1]
+	in, out := ins[1], outs[2]
 
 	check(in.Open())
 	check(out.Open())
@@ -154,7 +171,7 @@ func main() {
 		for i := range pines {
 			if pines[i].Read() == rpio.Low && anterior[i] == rpio.High {
 				// noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + transporte + cambioOctavas
-				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas
+				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas + byte(alteracion)
 				noteOn[2] = volumen
 				fmt.Println("Cuerda:", i, ", grado:", grado(byte(i)), ", nota:", noteOn[1], ", transporte:", transporte, ", octava:", cambioOctavas)
 				out.Write(noteOn)
@@ -163,7 +180,7 @@ func main() {
 			}
 			if pines[i].Read() == rpio.High && anterior[i] == rpio.Low {
 				// noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + transporte + cambioOctavas
-				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas
+				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas + byte(alteracion)
 				noteOn[2] = 0
 				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
