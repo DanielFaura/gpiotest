@@ -26,7 +26,6 @@ var (
 	}
 	volumen    byte = 127
 	alteracion int  = 0
-	pedal      byte = 0
 )
 
 func check(e error) {
@@ -112,14 +111,6 @@ func lector(pos *reader.Position, msg midi.Message) {
 		// Cambio de volumen
 		volumen = m[2]
 	}
-	if m[0] == 0b10110001 && m[1] == 64 && m[2] == 0 {
-		//pedal off
-		pedal = 0
-	}
-	if m[0] == 0b10110001 && m[1] == 64 && m[2] == 127 {
-		//pedal on
-		pedal = 127
-	}
 }
 
 func main() {
@@ -136,32 +127,25 @@ func main() {
 
 	for _, v := range ins {
 		fmt.Println("IN", v)
-		check(v.Open())
-		defer v.Close()
 	}
 
-	for _, v := range outs {
+	for _, v := range ins {
 		fmt.Println("OUT", v)
-		check(v.Open())
-		defer v.Close()
 	}
 
-	// in, out := ins[2], outs[1]
+	in, out := ins[1], outs[2]
 
-	// check(in.Open())
-	// check(out.Open())
+	check(in.Open())
+	check(out.Open())
 
-	// defer in.Close()
-	// defer out.Close()
+	defer in.Close()
+	defer out.Close()
 
 	noteOn := []byte{0b10010001, 0, 0}
 	// noteOff := []byte{0b10000001, 0, 127}
 	allSoundOff := []byte{0b10110001, 120, 0}
-	damperPedal := []byte{0b10110001, 64, 0}
 
-	for _, v := range outs {
-		v.Write(allSoundOff)
-	}
+	out.Write(allSoundOff)
 	time.Sleep(1 * time.Second)
 
 	err = rpio.Open()
@@ -172,7 +156,7 @@ func main() {
 		reader.Each(lector),
 	)
 
-	err = rd.ListenTo(ins[2])
+	err = rd.ListenTo(in)
 	check(err)
 
 	pines := make([]rpio.Pin, 22)
@@ -190,13 +174,7 @@ func main() {
 				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas + byte(alteracion)
 				noteOn[2] = volumen
 				fmt.Println("Cuerda:", i, ", grado:", grado(byte(i)), ", nota:", noteOn[1], ", transporte:", transporte, ", octava:", cambioOctavas)
-				for _, v := range outs {
-					v.Write(noteOn)
-				}
-				damperPedal[2] = pedal
-				for _, v := range outs {
-					v.Write(damperPedal)
-				}
+				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
 				anterior[i] = rpio.Low
 			}
@@ -204,13 +182,9 @@ func main() {
 				// noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + transporte + cambioOctavas
 				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas + byte(alteracion)
 				noteOn[2] = 0
-				for _, v := range outs {
-					v.Write(noteOn)
-				}
+				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
-				for _, v := range outs {
-					v.Write(noteOn)
-				}
+				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
 				anterior[i] = rpio.High
 			}
