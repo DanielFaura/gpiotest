@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stianeikeland/go-rpio"
@@ -26,6 +27,9 @@ var (
 	}
 	volumen    byte = 127
 	alteracion int  = 0
+	drv        *driver.Driver
+	in         midi.In
+	out        midi.Out
 )
 
 func check(e error) {
@@ -72,6 +76,7 @@ func octava(cuerda byte) (octava byte) {
 // }
 
 func lector(pos *reader.Position, msg midi.Message) {
+	damperPedal := []byte{0b10110000, 64, 0}
 	fmt.Printf("got %s\n", msg)
 	m := msg.Raw()
 	fmt.Println("RECIBIDO", m)
@@ -111,12 +116,41 @@ func lector(pos *reader.Position, msg midi.Message) {
 		// Cambio de volumen
 		volumen = m[2]
 	}
+	if m[0] == 0b10110000 && m[1] == 64 {
+		damperPedal[2] = m[2]
+		out.Write(damperPedal)
+	}
+}
+
+func interfaces() {
+	ins, err := drv.Ins()
+	check(err)
+
+	outs, err := drv.Outs()
+	check(err)
+	for _, v := range ins {
+		if strings.Contains(v.String(), "microKEY2") {
+			in = v
+		}
+	}
+
+	for _, v := range outs {
+		if !strings.Contains(v.String(), "microKEY2") && !strings.Contains(v.String(), "Through") {
+			out = v
+		}
+	}
+
+	check(in.Open())
+	check(out.Open())
+
+	defer in.Close()
+	defer out.Close()
 }
 
 func main() {
-	drv, err := driver.New()
+	var err error
+	drv, err = driver.New()
 	check(err)
-
 	defer drv.Close()
 
 	ins, err := drv.Ins()
@@ -124,22 +158,25 @@ func main() {
 
 	outs, err := drv.Outs()
 	check(err)
-
 	for _, v := range ins {
-		fmt.Println("IN", v)
+		if strings.Contains(v.String(), "microKEY2") {
+			in = v
+		}
 	}
 
-	for _, v := range ins {
-		fmt.Println("OUT", v)
+	for _, v := range outs {
+		if !strings.Contains(v.String(), "microKEY2") && !strings.Contains(v.String(), "Through") {
+			out = v
+		}
 	}
-
-	in, out := ins[1], outs[2]
 
 	check(in.Open())
 	check(out.Open())
 
 	defer in.Close()
 	defer out.Close()
+
+	// go interfaces()
 
 	noteOn := []byte{0b10010001, 0, 0}
 	// noteOff := []byte{0b10000001, 0, 127}
@@ -167,6 +204,7 @@ func main() {
 		pines[i].PullDown()
 	}
 	anterior := make([]rpio.State, 22)
+
 	for {
 		for i := range pines {
 			if pines[i].Read() == rpio.Low && anterior[i] == rpio.High {
@@ -182,6 +220,8 @@ func main() {
 				// noteOn[1] = nota(grado(byte(i))) + 12*octava(byte(i)) + transporte + cambioOctavas
 				noteOn[1] = modos[modo][grado(byte(i))] + 12*octava(byte(i)) + transporte + cambioOctavas + byte(alteracion)
 				noteOn[2] = 0
+				out.Write(noteOn)
+				time.Sleep(10000 * time.Microsecond)
 				out.Write(noteOn)
 				time.Sleep(10000 * time.Microsecond)
 				out.Write(noteOn)
