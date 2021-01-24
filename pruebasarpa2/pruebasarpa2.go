@@ -24,6 +24,7 @@ var (
 		{0, 2, 3, 5, 7, 9, 11}, // Menor melódica
 		{0, 2, 3, 6, 7, 8, 11}, // Escala árabe turbia
 		{0, 2, 3, 5, 7, 9, 10}, // Dórica
+		{0, 1, 4, 5, 7, 8, 11}, // Escala árabe mayor
 	}
 	volumen    byte = 127
 	alteracion int  = 0
@@ -148,7 +149,18 @@ func interfaces() {
 }
 
 func main() {
-	var err error
+
+	err := rpio.Open()
+	check(err)
+
+	pines := make([]rpio.Pin, 22)
+
+	for i := range pines {
+		pines[i] = rpio.Pin(i + 4)
+		pines[i].Input()
+		pines[i].PullDown()
+	}
+
 	drv, err = driver.New()
 	check(err)
 	defer drv.Close()
@@ -185,9 +197,6 @@ func main() {
 	out.Write(allSoundOff)
 	time.Sleep(1 * time.Second)
 
-	err = rpio.Open()
-	check(err)
-
 	rd := reader.New(
 		reader.NoLogger(),
 		reader.Each(lector),
@@ -196,13 +205,12 @@ func main() {
 	err = rd.ListenTo(in)
 	check(err)
 
-	pines := make([]rpio.Pin, 22)
-
 	for i := range pines {
 		pines[i] = rpio.Pin(i + 4)
 		pines[i].Input()
 		pines[i].PullDown()
 	}
+
 	anterior := make([]rpio.State, 22)
 
 	for {
